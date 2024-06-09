@@ -20,32 +20,67 @@
             outline: none;
             overflow-y: auto;
         }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 50%;
+            max-width: 600px;
+            background: white;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+            padding: 20px;
+            border-radius: 10px;
+            z-index: 1000;
+        }
+        .modal input {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 20px;
+            font-size: 16px;
+        }
+        .modal button {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            font-size: 16px;
+            border: none;
+            border-radius: 5px;
+            background-color: #007BFF;
+            color: white;
+            cursor: pointer;
+        }
+        .modal button:hover {
+            background-color: #0056b3;
+        }
+        #exportForm {
+            display: none;
+        }
     </style>
 </head>
 <body>
     <div id="editor" contenteditable="true"></div>
-    <button onclick="exportContent('pdf')">Export as PDF</button>
-    <button onclick="exportContent('md')">Export as Markdown</button>
-    <form id="exportForm" style="display:none;" method="post">
+    <div class="modal" id="commandModal">
+        <input type="text" placeholder="Type a command..." id="commandInput">
+        <button onclick="exportContent('pdf')">Export as PDF</button>
+        <button onclick="exportContent('md')">Export as Markdown</button>
+        <button onclick="summarizeContent()">Summarize</button>
+    </div>
+    <form id="exportForm" method="post">
         <textarea name="content" id="content"></textarea>
     </form>
     <script>
         document.addEventListener('keydown', function(e) {
-            if (e.metaKey || e.ctrlKey) {
-                switch (e.key) {
-                    case 'b':
-                        document.execCommand('bold');
-                        e.preventDefault();
-                        break;
-                    case 'i':
-                        document.execCommand('italic');
-                        e.preventDefault();
-                        break;
-                    case 'u':
-                        document.execCommand('underline');
-                        e.preventDefault();
-                        break;
-                }
+            if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+                e.preventDefault();
+                const modal = document.getElementById('commandModal');
+                modal.style.display = 'block';
+                document.getElementById('commandInput').focus();
+            }
+            if (e.key === 'Escape') {
+                const modal = document.getElementById('commandModal');
+                modal.style.display = 'none';
             }
         });
 
@@ -55,9 +90,19 @@
             const form = document.getElementById('exportForm');
             form.action = `/export/${type}`;
             form.submit();
+            closeModal();
+        }
+
+        function summarizeContent() {
+            // Implement the summarization logic here
+            alert('Summarize content');
+            closeModal();
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('commandModal');
+            modal.style.display = 'none';
         }
     </script>
 </body>
 </html>
-
-
