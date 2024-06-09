@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Infinite Canvas</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        #editor {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            outline: none;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <div id="editor" contenteditable="true"></div>
+    <button onclick="exportContent('pdf')">Export as PDF</button>
+    <button onclick="exportContent('md')">Export as Markdown</button>
+    <form id="exportForm" style="display:none;" method="post">
+        <textarea name="content" id="content"></textarea>
+    </form>
+    <script>
+        document.addEventListener('keydown', function(e) {
+            if (e.metaKey || e.ctrlKey) {
+                switch (e.key) {
+                    case 'b':
+                        document.execCommand('bold');
+                        e.preventDefault();
+                        break;
+                    case 'i':
+                        document.execCommand('italic');
+                        e.preventDefault();
+                        break;
+                    case 'u':
+                        document.execCommand('underline');
+                        e.preventDefault();
+                        break;
+                }
+            }
+        });
+
+        function exportContent(type) {
+            const editorContent = document.getElementById('editor').innerHTML;
+            document.getElementById('content').value = editorContent;
+            const form = document.getElementById('exportForm');
+            form.action = `/export/${type}`;
+            form.submit();
+        }
+    </script>
+</body>
+</html>
+
+
