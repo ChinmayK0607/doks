@@ -3,14 +3,22 @@ package main
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
-	"io"
+	"io/ioutil"
 	"net/http"
-	"regexp"
 
 	"github.com/jung-kurt/gofpdf"
-	"github.com/shurcooL/github_flavored_markdown"
 )
+
+// func main() {
+// 	http.HandleFunc("/", serveIndex)
+// 	http.HandleFunc("/export/pdf", exportPDF)
+// 	http.HandleFunc("/export/md", exportMD)
+// 	http.HandleFunc("/action/copy", copyToClipboard)
+// 	http.HandleFunc("/action/analyze", analyzeWithAI)
+
+// 	fmt.Println("Server started at http://localhost:8080")
+// 	http.ListenAndServe(":8080", nil)
+// }
 
 func serveIndex(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, "index.html")
@@ -40,25 +48,40 @@ func exportMD(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
 	content := r.FormValue("content")
 
-	// Process the content with GitHub Flavored Markdown
-	mdContent_test := github_flavored_markdown.Markdown([]byte(content))
+	// Prepare the JSON payload to send to the FastAPI server
+	payload := map[string]string{"content": content}
+	jsonPayload, err := json.Marshal(payload)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
-	reBoldOpen := regexp.MustCompile(`(?i)<b>`)
-	reBoldClose := regexp.MustCompile(`(?i)\s*</b>`)
-	reItalicOpen := regexp.MustCompile(`(?i)<i>`)
-	reItalicClose := regexp.MustCompile(`(?i)\s*</i>`)
-	reRemoveTags := regexp.MustCompile(`(?i)<[^/b|/i][^>]*>`)
+	// Make the POST request to the FastAPI server
+	resp, err := http.Post("http://localhost:8000/export/md", "application/json", bytes.NewBuffer(jsonPayload))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	defer resp.Body.Close()
 
-	mdContent := reBoldOpen.ReplaceAllString(string(mdContent_test), "**")
-	mdContent = reBoldClose.ReplaceAllString(mdContent, "**")
-	mdContent = reItalicOpen.ReplaceAllString(mdContent, "*")
-	mdContent = reItalicClose.ReplaceAllString(mdContent, "*")
+	// Read the response from the FastAPI server
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
-	mdContent = reRemoveTags.ReplaceAllString(mdContent, "")
+	// Parse the response
+	var result map[string]string
+	if err := json.Unmarshal(body, &result); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Write the Markdown content to the response
 	w.Header().Set("Content-Type", "text/markdown")
 	w.Header().Set("Content-Disposition", "attachment; filename=export.md")
-	fmt.Println(mdContent)
-	w.Write([]byte(mdContent))
+	w.Write([]byte(result["markdown"]))
 }
 
 func copyToClipboard(w http.ResponseWriter, r *http.Request) {
@@ -93,16 +116,46 @@ func callLLM(content string) string {
 	}
 	defer resp.Body.Close()
 
-	body, _ := io.ReadAll(resp.Body)
+	body, _ := ioutil.ReadAll(resp.Body)
 	return string(body)
 }
 
-// func main() {
-// 	http.HandleFunc("/", serveIndex)
-// 	http.HandleFunc("/export/pdf", exportPDF)
-// 	http.HandleFunc("/export/md", exportMD)
-// 	http.HandleFunc("/copy", copyToClipboard)
-// 	http.HandleFunc("/analyze", analyzeWithAI)
+func summarizeContent(w http.ResponseWriter, r *http.Request) {
+	var data struct {
+		Text string `json:"text"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
 
-// 	http.ListenAndServe(":8080", nil)
-// }
+	payload := map[string]string{"text": data.Text}
+	jsonPayload, err := json.Marshal(payload)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	resp, err := http.Post("http://localhost:8000/summarize", "application/json", bytes.NewBuffer(jsonPayload))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	defer resp.Body.Close()
+
+	// Read the response from the FastAPI server
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	var result map[string]string
+	if err := json.Unmarshal(body, &result); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(result)
+}
