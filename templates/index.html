@@ -94,8 +94,21 @@
         }
 
         function summarizeContent() {
-            // Implement the summarization logic here
-            alert('Summarize content');
+            const editorContent = document.getElementById('editor').innerText;
+            fetch('/action/summarize', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ text: editorContent }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert('Summary: ' + data.summary);
+            })
+            .catch((error) => {
+                console.error('Error:', error);
+            });
             closeModal();
         }
 
