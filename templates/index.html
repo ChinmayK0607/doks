@@ -71,6 +71,20 @@
         <textarea name="content" id="content"></textarea>
     </form>
     <script>
+        // Load the content from localStorage when the page loads
+        document.addEventListener('DOMContentLoaded', (event) => {
+            const savedContent = localStorage.getItem('editorContent');
+            if (savedContent) {
+                document.getElementById('editor').innerHTML = savedContent;
+            }
+        });
+
+        // Save the content to localStorage whenever it changes
+        document.getElementById('editor').addEventListener('input', (event) => {
+            const editorContent = document.getElementById('editor').innerHTML;
+            localStorage.setItem('editorContent', editorContent);
+        });
+
         document.addEventListener('keydown', function(e) {
             if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
                 e.preventDefault();
@@ -94,17 +108,28 @@
         }
 
         function summarizeContent() {
-            const editorContent = document.getElementById('editor').innerText;
+            let selectedText = window.getSelection().toString();
+            if (!selectedText) {
+                selectedText = document.getElementById('editor').innerText;
+            }
+
             fetch('/action/summarize', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ text: editorContent }),
+                body: JSON.stringify({ text: selectedText }),
             })
             .then(response => response.json())
             .then(data => {
-                alert('Summary: ' + data.summary);
+                const summary = data.summary;
+                if (window.getSelection().toString()) {
+                    const range = window.getSelection().getRangeAt(0);
+                    range.deleteContents();
+                    range.insertNode(document.createTextNode(summary));
+                } else {
+                    document.getElementById('editor').innerText = summary;
+                }
             })
             .catch((error) => {
                 console.error('Error:', error);
