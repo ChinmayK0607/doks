@@ -42,7 +42,7 @@ def convert_html_to_markdown(html_content):
 
 def query_hf_model(payload):
     API_URL = "https://api-inference.huggingface.co/models/Falconsai/text_summarization"
-    headers = {"Authorization": "Bearer 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"}
+    headers = {"Authorization": "Bearer hf_----"} # add your hf_token
     response = requests.post(API_URL, headers=headers, json=payload)
     return response.json()
 
